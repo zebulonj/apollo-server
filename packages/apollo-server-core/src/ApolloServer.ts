@@ -160,6 +160,7 @@ export class ApolloServerBase {
     Config['experimental_approximateDocumentStoreMiB'];
 
   // The constructor should be universal across all environments. All environment specific behavior should be set by adding or overriding methods
+  // NOTE: This calls async code that potentially yields unhandled promise rejections.
   constructor(config: Config) {
     if (!config) throw new Error('ApolloServer requires options.');
     this.config = config;
@@ -363,6 +364,7 @@ export class ApolloServerBase {
     this.playgroundOptions = createPlaygroundOptions(playground);
 
     // TODO: This is a bit nasty because the subscription server needs this.schema synchronously, for reasons of backwards compatibility.
+    // This also ugly in the gateway context, where initSchema() returns a promise.
     const _schema = this.initSchema();
 
     if (isSchema(_schema)) {
@@ -373,6 +375,8 @@ export class ApolloServerBase {
       this.schemaDerivedData = _schema.then(schema =>
         this.generateSchemaDerivedData(schema),
       );
+      // If there is an error in the call to initSchema, this does not go far
+      // enough to handle it.
     } else {
       throw new Error("Unexpected error: Unable to resolve a valid GraphQLSchema.  Please file an issue with a reproduction of this error, if possible.");
     }
@@ -384,6 +388,7 @@ export class ApolloServerBase {
     this.graphqlPath = path;
   }
 
+  // In the context of a gateway, the promise returned here is not handled.
   private initSchema(): GraphQLSchema | Promise<GraphQLSchema> {
     const {
       gateway,
@@ -417,6 +422,7 @@ export class ApolloServerBase {
             }
           : undefined;
 
+      // The promise returned here is potentially unhandled by the caller.
       return gateway.load({ engine: engineConfig }).then(config => {
         this.requestOptions.executor = config.executor;
         return config.schema;

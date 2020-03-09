@@ -266,6 +266,9 @@ export class ApolloGateway implements GraphQLService {
     }
   }
 
+  // This async method is the source of unhandled promise rejections during startup
+  // in the context of a gateway, when the schema validation fails or the implementing
+  // service(s) are unreachable.
   public async load(options?: { engine?: GraphQLServiceEngineConfig }) {
     await this.updateComposition(options);
     const { graphId, graphVariant } = (options && options.engine) || {};
